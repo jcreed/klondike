@@ -48,7 +48,7 @@ class Klondike
 	end
 
 	def stock_finished?
-		@stock_pile.count == @cards_played + @discard_pile.count 
+		@stock_pile.count == @cards_played + @discard_pile.count || @stock_pile.count = 0
 	end
 
 	# create a stock deck
@@ -98,9 +98,10 @@ class Klondike
 
 	def move_pile
 			puts "Move pile (1-7)" 
-			m = gets.chomp.upcase
+			m = gets.chomp
 			puts "To pile (1-7)" 
-			t = gets.chomp.upcase
+			t = gets.chomp
+			move_tableau_pile(m, t) if ok_move_pile_to_pile_for_tableau?(m, t)	
 	end
 
 	def show_opts
@@ -122,7 +123,7 @@ class Klondike
 				move_to_tableau(i)	# tableau move
 			when "D" 								# discard
 		  		@discard_pile << @cur_card
-			  	@cur_card.clear
+			  	@cur_card = ""
 		end
 	end
 
@@ -135,10 +136,9 @@ class Klondike
 			@cards_played = 0
 			@stock_count = 0
 			@stock_pile = @discard_pile
-			@discard_pile.clear
+			@discard_pile = []
 		end
 	end
-
 
 	# card can go to foundation pile if No Cards exists on a pile and
 	# the card is an Ace or current card is the same suit and the 
@@ -187,16 +187,33 @@ class Klondike
 		end
 	end
 
+	# move From tableau pile to To tableau pile
+	def move_tableau_pile(from, to)
+			#while !@tableau[from.to_s+"U"].empty?
+			@tableau[from.to_s+"U"].length.times {|x| @tableau[to.to_s+"U"] << @tableau[from.to_s+"U"].shift}
+			@tableau[from.to_s+"U"] = [@tableau[from.to_s+"D"].pop]
+			p @tableau
+	end
+
 	# card can be used on tableau if no cards exist or
 	# the current card is a different color then that is already on the pile and
 	# the current card has to be a lesser value 4 of clubs set on a 5 of hearts
-    def card_ok_for_tableau?(pile)	
+  def card_ok_for_tableau?(pile)	
 		@tableau[pile.to_s+"U"].empty?  ||
-		 (@@values.index(card_value(@cur_card.strip)).next == ( @@values.index(card_value(@tableau[pile.to_s+"U"][-1])) ) &&
-		 !@@suits[card_suit(@cur_card.strip)].eql?( @@suits[card_suit(@tableau[pile.to_s+"U"][-1])] ) )
+		 (@@values.index(card_value(@cur_card.strip)).next == ( @@values.index(card_value(@tableau[pile.to_s+"U"].last)) ) &&
+		 !@@suits[card_suit(@cur_card.strip)].eql?( @@suits[card_suit(@tableau[pile.to_s+"U"].last)] ) )
 #		p @tableau
 	end
 
+	# pile can be move in tableau if 
+	# the from pile starts with a different color then that is already on the to pile and
+	# the from pile has to be a lesser value then the to pile value ie. 4 of clubs set on a 5 of hearts
+  def ok_move_pile_to_pile_for_tableau?(from, to)	
+		@tableau[from.to_s+"U"].empty? && @tableau[to.to_s+"U"].empty? 
+		 (@@values.index(card_value(@tableau[from.to_s+"U"].first)).next == ( @@values.index(card_value(@tableau[to.to_s+"U"].last)) ) &&
+		 !@@suits[card_suit(@tableau[from.to_s+"U"].first)].eql?( @@suits[card_suit(@tableau[to.to_s+"U"].last)] ) )
+#		p @tableau
+	end
 	# test current card against foundation pile to see if it is the same suit 
 	# and the value is higher than the last card on the pile
 	def card_ok_for_foundation?
@@ -217,7 +234,7 @@ class Klondike
 		@tableau.each do |k,v| 
 			if k.include? "U"
 #				((n-1)*5).times {print " "}
-				print "Row #{k[0]} shows: (#{hidden} turned down) #{v[0]} -> #{v.last}" 
+				print "Row #{k[0]} shows: (#{hidden} turned down) #{v[0]} -> #{v[-1]}" 
 				puts ""
 			else
 				hidden = v.count 
