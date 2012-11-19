@@ -44,11 +44,12 @@ class Klondike
 		 	loop do
 		 		flip_card 
 		 	end
+		 	puts "Game over try again!"
 		 end
 	end
 
 	def stock_finished?
-		@stock_pile.count == @cards_played + @discard_pile.count || @stock_pile.count = 0
+		@stock_pile.count == @cards_played + @discard_pile.count || @stock_pile.count == 0
 	end
 
 	# create a stock deck
@@ -86,11 +87,12 @@ class Klondike
 
 	# flip a card to be played
 	def flip_card
-		p @cur_card
+		#p @cur_card
 		@cur_card = @stock_pile.shift if @cur_card.empty?
+		#check_tableau
 		show_game
 		p = self.show_opts  
-		throw :quit if p == "Q"
+		throw :quit if p == "Q" || gameover?
 		move_pile if p == "M"
 		get_play if p == "P"
 		check_stock
@@ -101,7 +103,11 @@ class Klondike
 			m = gets.chomp
 			puts "To pile (1-7)" 
 			t = gets.chomp
-			move_tableau_pile(m, t) if ok_move_pile_to_pile_for_tableau?(m, t)	
+			if ok_move_pile_to_pile_for_tableau?(m, t)	
+				move_tableau_pile(m, t) 
+			else
+				puts "Piles don't match up"
+			end
 	end
 
 	def show_opts
@@ -117,7 +123,7 @@ class Klondike
 		case i
 			when "F" 
 				puts "(C)urrent card or (T)ableau card."
-				m = gets.chomp
+				m = gets.upcase.chomp
 				move_to_foundation(m)	#foundation move
 			when /[1-7]/ 
 				move_to_tableau(i)	# tableau move
@@ -129,15 +135,16 @@ class Klondike
 
 	# check condition of stock pile being played
 	def check_stock
-		@stock_useless += 1 if @stock_count == @discard_pile.count
-		if @stock_useless > 1
-			p "Game is over the stock is unplayable" 
-		elsif stock_finished?
+		if stock_finished?
+		  @stock_useless += 1 
+			puts "No more cards lets replay the deck"
 			@cards_played = 0
 			@stock_count = 0
 			@stock_pile = @discard_pile
 			@discard_pile = []
 		end
+		#if @stock_useless > 1
+		#p "Game is over the stock is unplayable" 
 	end
 
 	# card can go to foundation pile if No Cards exists on a pile and
@@ -145,26 +152,28 @@ class Klondike
 	# value is higher than the last card on the pile
 	def move_to_foundation(move_type)
 		if move_type == "C"	#current card
-			if @foundation[card_suit(@cur_card.strip)][0].eql?'No Cards' && @cur_card[0].eql?("A")
+			if (@foundation[card_suit(@cur_card.strip)][0].eql?('No Cards') && @cur_card[0].include?("A"))
 				@foundation[card_suit(@cur_card.strip)] = [@cur_card]  
 				@cur_card = ""
 				@cards_played += 1
-			elsif card_ok_for_foundation?
+			elsif card_ok_for_foundation(@cur_card)
 				@foundation[card_suit(@cur_card.strip)] << [@cur_card]  
 				@cur_card = ""
 				@cards_played += 1
 			else
-				p "Card can't be used on the Foundation piles replay the card"
+				puts "Card can't be used on the Foundation piles replay the card"
 			end
 		else	# use a tableau card
 			puts "Which pile (1-7)? "
 			p = gets.chomp
-			if @foundation[card_suit(@tableau[p.to_s+"U"].last)][0].eql?'No Cards' && @tableau[p.to_s+"U"].last.eql?("A")
-				@foundation[card_suit(@tableau[p.to_s+"U"].last)] = [@tableau[p.to_s+"U"].last]  
-			elsif card_ok_for_foundation?
-				@foundation[card_suit(@tableau[p.to_s+"U"].last)] << [@tableau[p.to_s+"U"].last]  
+			if (@foundation[card_suit(@tableau[p.to_s+"U"].last)][0].eql?('No Cards') && @tableau[p.to_s+"U"].last.include?("A"))
+				@foundation[card_suit(@tableau[p.to_s+"U"].last)] = [@tableau[p.to_s+"U"].pop]  
+				check_tableau
+			elsif card_ok_for_foundation(@tableau[p.to_s+"U"].last)
+				@foundation[card_suit(@tableau[p.to_s+"U"].last)] << [@tableau[p.to_s+"U"].pop]  
+				check_tableau
 			else
-				p "Card can't be used on the Foundation piles replay the card"
+				puts "Card can't be used on the Foundation piles replay the card"
 			end
 		end
 	end
@@ -172,7 +181,8 @@ class Klondike
 	def check_tableau
 		@tableau.each do |k,v| 
 			if k.include? "U" && v.empty?
-				@tableau[k] = @tableau[k[0]+"D"].last.pop
+			#if !k.index("U").eql?(0) && v.empty?
+					@tableau[k] = @tableau[k[0]+"D"].pop
 			end
 	 	end
 	end
@@ -181,9 +191,10 @@ class Klondike
 	def move_to_tableau(pile)
 		if card_ok_for_tableau?(pile)
 			@tableau[pile.to_s+"U"] << @cur_card
-			puts @tableau
+			#puts @tableau
 			@cur_card = ""
 			@cards_played += 1
+			puts "Card moved"
 		end
 	end
 
@@ -192,7 +203,8 @@ class Klondike
 			#while !@tableau[from.to_s+"U"].empty?
 			@tableau[from.to_s+"U"].length.times {|x| @tableau[to.to_s+"U"] << @tableau[from.to_s+"U"].shift}
 			@tableau[from.to_s+"U"] = [@tableau[from.to_s+"D"].pop]
-			p @tableau
+			puts "Pile moved"
+			#p @tableau
 	end
 
 	# card can be used on tableau if no cards exist or
@@ -216,9 +228,9 @@ class Klondike
 	end
 	# test current card against foundation pile to see if it is the same suit 
 	# and the value is higher than the last card on the pile
-	def card_ok_for_foundation?
-		@foundation.keys.include?(card_value(card_value.strip)) &&
-			@@values.index(card_value(@cur_card.strip)) > @@values.index(@foundation[card_value(@cur_card.strip)])
+	def card_ok_for_foundation(card)
+		@foundation.keys.include?(card_value(card)) &&
+			@@values.index(card_value(card)) > @@values.index(@foundation[card_value(card)])
 	end
 
 	def show_game
