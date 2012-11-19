@@ -78,7 +78,6 @@ class Klondike
 
 	def card_value(card)
 		card.gsub(/[HDCS]/,"")
-		#@card_value = @cur_card.gsub(/[HDCS]/,"")
 	end
 	
 	def card_suit(card)
@@ -157,7 +156,7 @@ class Klondike
 				@cur_card = ""
 				@cards_played += 1
 			elsif card_ok_for_foundation(@cur_card)
-				@foundation[card_suit(@cur_card.strip)] << [@cur_card]  
+				@foundation[card_suit(@cur_card.strip)] << @cur_card
 				@cur_card = ""
 				@cards_played += 1
 			else
@@ -170,7 +169,7 @@ class Klondike
 				@foundation[card_suit(@tableau[p.to_s+"U"].last)] = [@tableau[p.to_s+"U"].pop]  
 				check_tableau
 			elsif card_ok_for_foundation(@tableau[p.to_s+"U"].last)
-				@foundation[card_suit(@tableau[p.to_s+"U"].last)] << [@tableau[p.to_s+"U"].pop]  
+				@foundation[card_suit(@tableau[p.to_s+"U"].last)] << @tableau[p.to_s+"U"].pop
 				check_tableau
 			else
 				puts "Card can't be used on the Foundation piles replay the card"
@@ -179,10 +178,11 @@ class Klondike
 	end
 
 	def check_tableau
+		puts @tableau
 		@tableau.each do |k,v| 
-			if k.include? "U" && v.empty?
-			#if !k.index("U").eql?(0) && v.empty?
-					@tableau[k] = @tableau[k[0]+"D"].pop
+#			if k.include? "U" && v.empty?
+			if !k.index("U").eql?(0) && v.empty? && !@tableau[k[0]+"D"].count.eql?(0)
+					@tableau[k] = [@tableau[k[0]+"D"].pop] #@tableau[k.sub("U","D")].pop 
 			end
 	 	end
 	end
@@ -191,7 +191,6 @@ class Klondike
 	def move_to_tableau(pile)
 		if card_ok_for_tableau?(pile)
 			@tableau[pile.to_s+"U"] << @cur_card
-			#puts @tableau
 			@cur_card = ""
 			@cards_played += 1
 			puts "Card moved"
@@ -200,18 +199,16 @@ class Klondike
 
 	# move From tableau pile to To tableau pile
 	def move_tableau_pile(from, to)
-			#while !@tableau[from.to_s+"U"].empty?
 			@tableau[from.to_s+"U"].length.times {|x| @tableau[to.to_s+"U"] << @tableau[from.to_s+"U"].shift}
 			@tableau[from.to_s+"U"] = [@tableau[from.to_s+"D"].pop]
 			puts "Pile moved"
-			#p @tableau
 	end
 
 	# card can be used on tableau if no cards exist or
 	# the current card is a different color then that is already on the pile and
 	# the current card has to be a lesser value 4 of clubs set on a 5 of hearts
   def card_ok_for_tableau?(pile)	
-		@tableau[pile.to_s+"U"].empty?  ||
+		(@tableau[pile.to_s+"U"].count.eql?(0))  ||
 		 (@@values.index(card_value(@cur_card.strip)).next == ( @@values.index(card_value(@tableau[pile.to_s+"U"].last)) ) &&
 		 !@@suits[card_suit(@cur_card.strip)].eql?( @@suits[card_suit(@tableau[pile.to_s+"U"].last)] ) )
 #		p @tableau
@@ -221,16 +218,15 @@ class Klondike
 	# the from pile starts with a different color then that is already on the to pile and
 	# the from pile has to be a lesser value then the to pile value ie. 4 of clubs set on a 5 of hearts
   def ok_move_pile_to_pile_for_tableau?(from, to)	
-		@tableau[from.to_s+"U"].empty? && @tableau[to.to_s+"U"].empty? 
-		 (@@values.index(card_value(@tableau[from.to_s+"U"].first)).next == ( @@values.index(card_value(@tableau[to.to_s+"U"].last)) ) &&
-		 !@@suits[card_suit(@tableau[from.to_s+"U"].first)].eql?( @@suits[card_suit(@tableau[to.to_s+"U"].last)] ) )
-#		p @tableau
+		(!@tableau[from.to_s+"U"].count.eql?(0) && !@tableau[to.to_s+"U"].count.eql?(0)) &&
+		( (@@values.index(card_value(@tableau[from.to_s+"U"].first)).next ==  @@values.index(card_value(@tableau[to.to_s+"U"].last))  &&
+		 !@@suits[card_suit(@tableau[from.to_s+"U"].first)].eql?( @@suits[card_suit(@tableau[to.to_s+"U"].last)] ) ) )
 	end
 	# test current card against foundation pile to see if it is the same suit 
 	# and the value is higher than the last card on the pile
 	def card_ok_for_foundation(card)
-		@foundation.keys.include?(card_value(card)) &&
-			@@values.index(card_value(card)) > @@values.index(@foundation[card_value(card)])
+		#@foundation.keys.include?(card_value(card)) 
+			@@values.index(card_value(card)) < @@values.index(card_value(@foundation[card_suit(card)].last))
 	end
 
 	def show_game
@@ -239,16 +235,19 @@ class Klondike
 	end
 
 	def show_tableau
-#		n = 1
 		hidden = 0
 		29.times {|x| print " "}
 		puts "Top->Bottom cards"
 		@tableau.each do |k,v| 
 			if k.include? "U"
-#				((n-1)*5).times {print " "}
-				print "Row #{k[0]} shows: (#{hidden} turned down) #{v[0]} -> #{v[-1]}" 
-				puts ""
+				print "Row #{k[0]} shows: (#{hidden} turned down) "
+				if !v.count.eql?(0)
+					puts "#{v[0]} -> #{v[-1]}" 
+				else
+					puts ""
+				end
 			else
+				#puts v
 				hidden = v.count 
 			end
 	 	end
