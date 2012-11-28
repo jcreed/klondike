@@ -2,14 +2,41 @@
 
 require 'securerandom'
 
-class Klondike
-	FOUNDATION_PILES = 4
-	TABLEAU_PILES = 7
+class Cards
 	@@suits = {"H" => "R",'D' => "R",'C' => "B",'S' => "B"}
 	@@suit_spell = {"H" => "Heart",'D' => "Diamond",'C' => "Club",'S' => "Spade"}
-	@@values = ['A','2','3','4','5','6','7','8','9','10','J','Q','K']
+#	@@values = ['A','2','3','4','5','6','7','8','9','10','J','Q','K']
+	@@values = {'A' => 'Ace','2' => 'Two','3' => 'Three','4' => 'Four','5' => 'Five',
+							 '6' => 'Six','7' => 'Seven','8' => 'Eight','9' => 'Nine','10' => 'Ten',
+							 'J' => 'Jack','Q' => 'Queen','K' => 'King'}
+
+	@@deck = Array.new			#left over for play
+
+	attr_accessor :deck
+
+	def new_game
+		get_deck
+		shuffle
+	end
+
+	# create a stock deck
+	def get_deck
+		(0..3).each do |suit|
+			(0..12).each do |value|
+				@@deck[@@deck.length] = @@values.keys[value] + @@suits.keys[suit]
+			end
+		end
+	end
+
+	def shuffle
+		@@deck.shuffle!
+	end
+end
 
 
+class Klondike < Cards
+	FOUNDATION_PILES = 4
+	TABLEAU_PILES = 7
 
 	def initialize
 		@stock_pile = Array.new			#left over for play
@@ -32,11 +59,10 @@ class Klondike
 	end
 
 	def new_game
-		load_stock			# create cards
-		shuffle_deck		# shuffle
-		deal_cards			# setup cards
+		@stock_pile = super()		# create shuffled cards
+		deal_cards							# setup cards
 	 	@stock_count = @stock_pile.count  
-	 	start 					# start game
+	 	start 									# start game
 	end
 
 	# play game
@@ -53,6 +79,16 @@ class Klondike
 		puts "Game over try again!"
 	end
 
+	# setup the 7 tableau piles to be played turning over the first card
+	def deal_cards
+		(1..TABLEAU_PILES).each do |n|
+			n.times do |x| 
+				@tableau[n.to_s+"D"] << @stock_pile.shift
+			end
+			@tableau[n.to_s+"U"] << @tableau[n.to_s+"D"].pop 	# flip top card
+		end
+	end
+
 	def stock_finished?
 		(@stock_pile.count == @cards_played + @discard_pile.count) || @stock_pile.count == 0
 	end
@@ -66,29 +102,6 @@ class Klondike
 		puts "  *Discard pile is full lets replay the them* - There are #{@stock_count} cards left"
 	end
 
-	# create a stock deck
-	def load_stock
-		(0..3).each do |suit|
-			(0..12).each do |value|
-				@stock_pile[@stock_pile.length] = @@values[value] + @@suits.keys[suit]
-			end
-		end		
-	end
-
-	def shuffle_deck
-		@stock_pile.shuffle!
-	end
-
-
-	# setup the 7 tableau piles to be played turning over the first card
-	def deal_cards
-		(1..TABLEAU_PILES).each do |n|
-			n.times do |x| 
-				@tableau[n.to_s+"D"] << @stock_pile.shift
-			end
-			@tableau[n.to_s+"U"] << @tableau[n.to_s+"D"].pop 	# flip top card
-		end
-	end
 
 	# get cards type A,K,Q etc
 	def card_type(card)
@@ -97,7 +110,7 @@ class Klondike
 	
 	# get cards value
 	def card_value(card)
-		@@values.index(card.gsub(/[HDCS]/,""))
+		@@values.keys.index(card.gsub(/[HDCS]/,""))
 	end
 	
 	# get card suit
@@ -212,7 +225,9 @@ class Klondike
 			if v.last.eql?('No Cards')
 				puts "    #{full_suit}s has No Cards" 
 			else
-				puts "    #{full_suit}s top card shows " << card_type(v.last) 
+				result = "    #{full_suit}s top card shows a" 
+				result += @@values[card_type(v.last)].eql?("Ace") ? 'n ' : ' '
+				puts result << @@values[card_type(v.last)]
 			end
 		end
 		puts ""

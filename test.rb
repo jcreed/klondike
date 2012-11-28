@@ -1,0 +1,1 @@
+p 'Ace'.match(/#{Ace}+#{King}/)
